@@ -371,16 +371,8 @@ def main():
         print(f"CPU FLOPS:  {gflops(average_cpu_time):.2f}GFLOPS")
         print("minimum absolute error: {:.4e}".format(float(np.min(np.abs(C_ref - C)))))
         print("maximum absolute error: {:.4e}".format(float(np.max(np.abs(C_ref - C)))))
-        print(
-            "minimum relative error: {:.4e}".format(
-                float(np.min(np.abs((C_ref - C) / C_ref)))
-            )
-        )
-        print(
-            "maximum relative error: {:.4e}".format(
-                float(np.max(np.abs((C_ref - C) / C_ref)))
-            )
-        )
+        print("minimum relative error: {:.4e}".format(float(np.min(np.abs((C_ref - C) / C_ref)))))
+        print("maximum relative error: {:.4e}".format(float(np.max(np.abs((C_ref - C) / C_ref)))))
 
 
 if __name__ == "__main__":

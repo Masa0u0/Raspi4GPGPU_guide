@@ -14,9 +14,7 @@ class Pow_gpu(Eltwise_Layer):
         if self.tensor_data[self.input_name[1]] == 2.0:
             self.drv.execute(self.code, self.unif.addresses()[0], thread=self.num_qpus)
         else:
-            print(
-                "Warning: The GPU's pow function only supports Y==2. This layer will be executed on the CPU"
-            )
+            print("Warning: The GPU's pow function only supports Y==2. This layer will be executed on the CPU")
             input_data1 = self.tensor_data[self.input_name[0]]
             input_data2 = self.tensor_data[self.input_name[1]]
             output = np.power(input_data1, input_data2)

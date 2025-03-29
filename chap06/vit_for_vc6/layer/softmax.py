@@ -9,9 +9,7 @@ class Softmax(Layer):
 
     def run(self):
         input_data = self.tensor_data[self.input_name[0]]
-        e = np.exp(
-            input_data - np.max(input_data, axis=self.attrs["axis"], keepdims=True)
-        )
+        e = np.exp(input_data - np.max(input_data, axis=self.attrs["axis"], keepdims=True))
         s = np.sum(e, axis=self.attrs["axis"], keepdims=True)
         output = e / s
         if self.use_gpu:

@@ -30,12 +30,8 @@ def kernel(asm):
     # element_number
     eidx(r2)  # r2 = [0 ... 15]
     shl(r2, r2, 2)  # 各数値を4倍
-    add(
-        r0, r0, r2
-    )  # result[] のアドレスから ストライド=4バイトのアドレスベクトルを生成
-    add(
-        r1, r1, r2
-    )  # result[] のアドレスから ストライド=4バイトのアドレスベクトルを生成
+    add(r0, r0, r2)  # result[] のアドレスから ストライド=4バイトのアドレスベクトルを生成
+    add(r1, r1, r2)  # result[] のアドレスから ストライド=4バイトのアドレスベクトルを生成
 
     mov(tmua, r0, sig=thrsw)
     nop()

@@ -14,18 +14,14 @@ class Conv_mm(Layer):
         n, c, h, w = weights.shape
         self.col_w = weights.reshape(n, -1)
 
-    def im2col_i(
-        self, inp, inp_c, inp_h, inp_w, out_h, out_w, str_h, str_w, ker_h, ker_w
-    ):
+    def im2col_i(self, inp, inp_c, inp_h, inp_w, out_h, out_w, str_h, str_w, ker_h, ker_w):
         col = np.zeros((inp_c * ker_h * ker_w, out_h * out_w), dtype=np.float32)
         for h in range(0, inp_h, str_h):
             for w in range(0, inp_w, str_w):
 
                 ch = int(h / str_h)
                 cw = int(w / str_w)
-                col[:, ch * out_w + cw] = inp[
-                    0, :, h : h + str_h, w : w + str_w
-                ].reshape(-1)
+                col[:, ch * out_w + cw] = inp[0, :, h : h + str_h, w : w + str_w].reshape(-1)
 
         return col
 

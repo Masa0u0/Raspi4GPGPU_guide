@@ -9,9 +9,7 @@ class ReduceMean(Layer):
 
     def run(self):
         input_data = self.tensor_data[self.input_name[0]]
-        output = np.mean(
-            input_data, axis=tuple(self.attrs["axes"]), keepdims=self.attrs["keepdims"]
-        )
+        output = np.mean(input_data, axis=tuple(self.attrs["axes"]), keepdims=self.attrs["keepdims"])
         if self.use_gpu:
             self.tensor_data[self.output_name][:] = output
         else:

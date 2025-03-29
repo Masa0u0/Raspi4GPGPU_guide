@@ -13,9 +13,7 @@ class Gather(Layer):
         indices = self.tensor_data[self.input_name[1]]
         if indices.shape == ():
             indices = np.array([indices])
-        output = np.take(input_data, indices.astype(np.int32), axis=self.attrs["axis"])[
-            0
-        ]
+        output = np.take(input_data, indices.astype(np.int32), axis=self.attrs["axis"])[0]
         if self.use_gpu:
             self.tensor_data[self.output_name][:] = output
         else:

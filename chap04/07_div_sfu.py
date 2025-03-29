@@ -38,12 +38,8 @@ def kernel(asm):
     # element_number
     eidx(r0)  # r2 = [0 ... 15]
     shl(r0, r0, 2)  # 各数値を4倍
-    add(
-        reg_In_base, reg_In_base, r0
-    )  # result[] のアドレスから ストライド=4バイトのアドレスベクトルを生成
-    add(
-        reg_Out_base, reg_Out_base, r0
-    )  # result[] のアドレスから ストライド=4バイトのアドレスベクトルを生成
+    add(reg_In_base, reg_In_base, r0)  # result[] のアドレスから ストライド=4バイトのアドレスベクトルを生成
+    add(reg_Out_base, reg_Out_base, r0)  # result[] のアドレスから ストライド=4バイトのアドレスベクトルを生成
 
     # A_refを読む
     mov(tmua, reg_In_base, sig=thrsw)

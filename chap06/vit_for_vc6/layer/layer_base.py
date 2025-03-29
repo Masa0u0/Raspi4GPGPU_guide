@@ -8,10 +8,7 @@ class Layer:
         self.node = node
         self.use_gpu = use_gpu
         self.input_name = node.input
-        self.attrs = {
-            attr.name: onnx.helper.get_attribute_value(attr)
-            for attr in self.node.attribute
-        }
+        self.attrs = {attr.name: onnx.helper.get_attribute_value(attr) for attr in self.node.attribute}
         self.output_name = self.node.output[0]
         self.init_names = {tensor.name for tensor in model.graph.initializer}
 
@@ -73,9 +70,7 @@ class Eltwise_Layer(Layer):
         # shapeを合わせる
         if self.input_data1.size != self.input_data2.size:
             if self.input_data1.size > self.input_data2.size:
-                new_data = self.drv.alloc(
-                    self.input_data1.shape, dtype=self.input_data2.dtype
-                )
+                new_data = self.drv.alloc(self.input_data1.shape, dtype=self.input_data2.dtype)
                 if self.input_name[1] in self.init_names:
                     new_data[:] = self.input_data2
                 else:
@@ -83,9 +78,7 @@ class Eltwise_Layer(Layer):
                     self.copy_flg2 = True
                 self.input_data2 = new_data
             else:
-                new_data = self.drv.alloc(
-                    self.input_data2.shape, dtype=self.input_data1.dtype
-                )
+                new_data = self.drv.alloc(self.input_data2.shape, dtype=self.input_data1.dtype)
                 if self.input_name[0] in self.init_names:
                     new_data[:] = self.input_data1
                 else:

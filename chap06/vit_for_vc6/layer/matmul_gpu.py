@@ -27,9 +27,7 @@ class MatMul_gpu(Layer):
             num_thx = 4
             num_thy = 2
 
-        assert (
-            self.p >= 16 and self.r >= 32
-        ), "The matrix size must satisfy p <= 16 and r <= 32."
+        assert self.p >= 16 and self.r >= 32, "The matrix size must satisfy p <= 16 and r <= 32."
 
         self.num_qpus = num_thx * num_thy
 
@@ -87,9 +85,7 @@ class MatMul_gpu(Layer):
         self.code = self.drv.program(kernel, num_qpus=self.num_qpus)
 
     def run(self):
-        self.drv.execute(
-            self.code, self.unif.addresses()[0], timeout_sec=100, thread=self.num_qpus
-        )
+        self.drv.execute(self.code, self.unif.addresses()[0], timeout_sec=100, thread=self.num_qpus)
 
 
 @qpu

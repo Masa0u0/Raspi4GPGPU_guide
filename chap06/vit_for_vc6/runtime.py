@@ -15,10 +15,7 @@ class Inf:
 
         # Weightを格納
         self.tensor_data.update(
-            {
-                initializer.name: numpy_helper.to_array(initializer)
-                for initializer in self.model.graph.initializer
-            }
+            {initializer.name: numpy_helper.to_array(initializer) for initializer in self.model.graph.initializer}
         )
         self.create_layer(use_gpu)
 
@@ -29,17 +26,11 @@ class Inf:
         for node in self.model.graph.node:
             # 対応する層のインスタンスを作成
             if use_gpu:
-                self.layer.append(
-                    layer_dict_gpu[node.op_type](
-                        self.model, node, self.tensor_data, use_gpu, self.drv
-                    )
-                )
+                self.layer.append(layer_dict_gpu[node.op_type](self.model, node, self.tensor_data, use_gpu, self.drv))
             else:
                 for output_name in node.output:
                     self.tensor_data[output_name] = None
-                self.layer.append(
-                    layer_dict[node.op_type](self.model, node, self.tensor_data)
-                )
+                self.layer.append(layer_dict[node.op_type](self.model, node, self.tensor_data))
             self.time_dict[node.op_type] = 0
 
     def elem_type2numpy(self, dtype_onnx):
@@ -71,30 +62,19 @@ class Inf:
         for value_info in self.model.graph.value_info:
             if value_info.name == name:
                 shape_onnx = value_info.type.tensor_type.shape
-                shape_tuple = tuple(
-                    dim.dim_value if dim.HasField("dim_value") else None
-                    for dim in shape_onnx.dim
-                )
+                shape_tuple = tuple(dim.dim_value if dim.HasField("dim_value") else None for dim in shape_onnx.dim)
                 dtype = self.elem_type2numpy(value_info.type.tensor_type.elem_type)
                 break
         else:
             for model_output in self.model.graph.output:
                 if model_output.name == name:
                     shape_onnx = model_output.type.tensor_type.shape
-                    shape_tuple = tuple(
-                        dim.dim_value if dim.HasField("dim_value") else None
-                        for dim in shape_onnx.dim
-                    )
-                    dtype = self.elem_type2numpy(
-                        model_output.type.tensor_type.elem_type
-                    )
+                    shape_tuple = tuple(dim.dim_value if dim.HasField("dim_value") else None for dim in shape_onnx.dim)
+                    dtype = self.elem_type2numpy(model_output.type.tensor_type.elem_type)
             for model_input in self.model.graph.input:
                 if model_input.name == name:
                     shape_onnx = model_input.type.tensor_type.shape
-                    shape_tuple = tuple(
-                        dim.dim_value if dim.HasField("dim_value") else None
-                        for dim in shape_onnx.dim
-                    )
+                    shape_tuple = tuple(dim.dim_value if dim.HasField("dim_value") else None for dim in shape_onnx.dim)
                     dtype = self.elem_type2numpy(model_input.type.tensor_type.elem_type)
 
         return shape_tuple, dtype
@@ -106,9 +86,7 @@ class Inf:
                 shape, dtype = self.search_tensorinfo(output_name)
                 self.tensor_data[output_name] = self.drv.alloc(shape, dtype=dtype)
         shape, dtype = self.search_tensorinfo(self.model.graph.input[0].name)
-        self.tensor_data[self.model.graph.input[0].name] = self.drv.alloc(
-            shape, dtype=dtype
-        )
+        self.tensor_data[self.model.graph.input[0].name] = self.drv.alloc(shape, dtype=dtype)
 
     def set_input(self, input_data):
         if self.model.graph.input[0].name in self.tensor_data:

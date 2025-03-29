@@ -56,9 +56,7 @@ def output_test(asm):
     # element_number
     eidx(r2)  # r2 = [0 ... 15]
     shl(r2, r2, 2)  # 各数値を4倍
-    add(
-        r1, r1, r2
-    )  # result[] のアドレスから ストライド=4バイトのアドレスベクトルを生成
+    add(r1, r1, r2)  # result[] のアドレスから ストライド=4バイトのアドレスベクトルを生成
 
     mov(tmud, r0)  # 書き出すデータ
     mov(tmua, r1)  # 書き出し先アドレスベクトル

@@ -37,9 +37,7 @@ def kernel(asm):
 
     eidx(r0)  # r0 = [0 ... 15]
     shl(r0, r0, 2)  # 各数値を4倍(float32のバイト数分)
-    add(
-        reg_InA_base, reg_InA_base, r0
-    )  # Baseアドレスから ストライド=4バイトのアドレスベクトルを生成
+    add(reg_InA_base, reg_InA_base, r0)  # Baseアドレスから ストライド=4バイトのアドレスベクトルを生成
     add(reg_InB_base, reg_InB_base, r0)
     add(reg_OutA_base, reg_OutA_base, r0)
     add(reg_OutB_base, reg_OutB_base, r0)

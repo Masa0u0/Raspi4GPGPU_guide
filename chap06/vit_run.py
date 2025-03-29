@@ -95,13 +95,5 @@ print("onnxruntime time:{:.2f}sec".format(ort_time))
 print("vit_for_vc6 time:{:.2f}sec".format(vfv_time))
 
 # 計算誤差
-print(
-    "maximum absolute error : {:.4e}".format(
-        float(np.max(np.abs(result_vfv - result_ort)))
-    )
-)
-print(
-    "maximum relative error : {:.4e}".format(
-        float(np.max(np.abs(result_vfv - result_ort) / result_vfv))
-    )
-)
+print("maximum absolute error : {:.4e}".format(float(np.max(np.abs(result_vfv - result_ort)))))
+print("maximum relative error : {:.4e}".format(float(np.max(np.abs(result_vfv - result_ort) / result_vfv))))

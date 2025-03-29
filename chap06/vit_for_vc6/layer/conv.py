@@ -67,10 +67,7 @@ class Conv(Layer):
                         h_idx = int(h / stride_height)
                         w_idx = int(w / stride_width)
                         output[b, c, h_idx, w_idx] = np.sum(
-                            input_data[
-                                b, :, h : h + kernel_height, w : w + kernel_width
-                            ]
-                            * weights[c]
+                            input_data[b, :, h : h + kernel_height, w : w + kernel_width] * weights[c]
                         )
         # バイアスがある場合はそれを加えます。
         if bias is not None:

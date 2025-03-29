@@ -41,12 +41,8 @@ def kernel(asm):
     # TMU用 Baseアドレス生成
     eidx(r0)  # r0 = [0 ... 15]
     shl(r0, r0, 2)  # 各数値を4倍(float32のバイト数分)
-    add(
-        reg_In_cur, reg_In_base, r0
-    )  # Baseアドレスから ストライド=4バイトのアドレスベクトルを生成
-    add(
-        reg_Out_cur, reg_Out_base, r0
-    )  # Baseアドレスから ストライド=4バイトのアドレスベクトルを生成
+    add(reg_In_cur, reg_In_base, r0)  # Baseアドレスから ストライド=4バイトのアドレスベクトルを生成
+    add(reg_Out_cur, reg_Out_base, r0)  # Baseアドレスから ストライド=4バイトのアドレスベクトルを生成
 
     # データの読み込み
     mov(tmua, reg_In_cur, sig=thrsw)

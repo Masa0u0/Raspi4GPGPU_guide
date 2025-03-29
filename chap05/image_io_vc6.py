@@ -66,12 +66,8 @@ def kernel(asm, num_qpus):
     # TMU用 Baseアドレス生成
     eidx(r0)  # r0 = [0 ... 15]
     shl(r0, r0, 2)  # 各数値を4倍(float32のバイト数分)
-    add(
-        reg_In_cur, reg_In_base, r0
-    )  # Baseアドレスから ストライド=4バイトのアドレスベクトルを生成
-    add(
-        reg_Out_cur, reg_Out_base, r0
-    )  # Baseアドレスから ストライド=4バイトのアドレスベクトルを生成
+    add(reg_In_cur, reg_In_base, r0)  # Baseアドレスから ストライド=4バイトのアドレスベクトルを生成
+    add(reg_Out_cur, reg_Out_base, r0)  # Baseアドレスから ストライド=4バイトのアドレスベクトルを生成
 
     # TMU用 Strideアドレス生成
     # stride幅 = 1要素のバイト幅(今回はfloat32なので4バイト) * 1度に何個ずつアクセスするか
@@ -157,9 +153,7 @@ def main():
         # uniform setting
         unif = drv.alloc(6, dtype="uint32")
         unif[0] = inp.addresses()[0, 0]
-        unif[1] = inp.strides[
-            1
-        ]  # Wが1つインクリメントされたらポインタが何バイト移動するか(横1要素のサイズ)
+        unif[1] = inp.strides[1]  # Wが1つインクリメントされたらポインタが何バイト移動するか(横1要素のサイズ)
         unif[2] = out.addresses()[0, 0]
         unif[3] = out.strides[1]
         unif[4] = H / num_qpus
