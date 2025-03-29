@@ -12,27 +12,33 @@ from videocore6.driver import Driver
 def kernel(asm):
     # uniformから値を取り出す
     # uniformの読み取り位置はインクリメントされる(pop的動作)
-    nop(sig=ldunifrf(r0))
-    nop(sig=ldunifrf(r1))
-    nop(sig=ldunifrf(r3))
+    nop(sig=ldunifrf(r0))  # A_refの先頭アドレス (16個コピー)
+    nop(sig=ldunifrf(r1))  # outの先頭アドレス
+    nop(sig=ldunifrf(r3))  # A_refに対するB_refの位置 (バイト数)
 
     # element_number
     eidx(r2)  # r2 = [0 ... 15]
-    shl(r2, r2, 2)  # 各数値を4倍
-    add(r0, r0, r2)  # result[] のアドレスから ストライド=4バイトのアドレスベクトルを生成
-    add(r1, r1, r2)  # result[] のアドレスから ストライド=4バイトのアドレスベクトルを生成
+    shl(r2, r2, 2)  # 各数値を4倍: r2 = [0, 4, ... , 60]
+    add(r0, r0, r2)  # ストライド=4バイトのアドレスベクトルを生成 -> r0 = A_refのそれぞれの要素のアドレス
+    add(r1, r1, r2)  # ストライド=4バイトのアドレスベクトルを生成 -> r1 = outのそれぞれの要素のアドレス
 
+    # r0のアドレスに入っている値 (A_ref) をr2に読み出す
     mov(tmua, r0, sig=thrsw)
     nop()
     nop()
     nop(sig=ldtmu(r2))
 
+    # r0のそれぞれのアドレスを64バイト (32ビットの小数16個分) だけシフト
+    # これでr0はB_refのアドレスを指す
     add(r0, r0, r3)
+
+    # r0のアドレスに入っている値 (B_ref) をr3に読み出す
     mov(tmua, r0, sig=thrsw)
     nop()
     nop()
     nop(sig=ldtmu(r3))
 
+    # r2 (A_ref) と r3 (B_ref) を足した値をr2に格納
     fadd(r2, r2, r3)
 
     mov(tmud, r2)  # 書き出すデータ

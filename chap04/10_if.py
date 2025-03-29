@@ -49,9 +49,9 @@ def kernel(asm):
     nop()
     nop(sig=ldtmu(r0))
 
-    # 0x0001とのビット論理積
+    # 0x0001とのビット論理積 -> 結果が0なら"Z (Zero)"条件をスタックにプッシュ
     # `cond = 'push*'` moves the old conditional flag A to B
-    band(null, r0, 1, cond="pushz")
+    band(null, r0, 1, cond="pushz")  # null = r0 & 1 (論理積の結果はGMUメモリには保存しない)
 
     # Zフラグがクリア(奇数)ならジャンプ
     b(R.odd, cond="allna")

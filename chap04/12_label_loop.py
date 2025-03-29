@@ -65,6 +65,7 @@ def kernel(asm):
         # r1 = 1*2*2*2*...
         umul24(r1, r1, 2)
 
+        # r0が0でないならジャンプしない
         sub(r0, r0, 1, cond="pushz")
         li.b(cond="allna")
         nop()  # delay slot

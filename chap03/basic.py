@@ -25,7 +25,7 @@ def main():
         code = drv.program(basic_temp)
 
         # カーネルプログラム実行
-        num_qpus = 1  # スレッド数(1~8)
+        num_qpus = 1  # スレッド数 (1~8)．VideoCore6は2スライス4QPUなので，QPUは合計で8つある．よって並列実行可能なスレッド数も8．
         drv.execute(code, thread=num_qpus)
 
         """

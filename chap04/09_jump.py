@@ -33,6 +33,8 @@ def kernel(asm):
     fadd(r0, r0, 1.0)
 
     # 以下2行をどこに挟むかによって結果が変わる
+    # 3命令後にL.endにジャンプ
+    # "end"の部分は自由に決められる
     b(R.end, cond="always")
     nop()
     nop()
