@@ -28,6 +28,7 @@ def exit_qpu():
 
 @qpu
 def kernel(asm, num_qpus):
+    # 使用するレジスタのエイリアス
     g = globals()
     g["reg_In_base"] = g["rf0"]
     g["reg_In_stride"] = g["rf1"]
@@ -57,7 +58,11 @@ def kernel(asm, num_qpus):
     if num_qpus == 1:
         mov(reg_qpu_num, 0)
     elif num_qpus == 8:
+        # QPUのIDとスレッドのIDを取り出してr0に格納する．
+        # 8つのスレッドが並列で動作しており，スレッドによって異なる結果が返る．
         tidx(r0)
+
+        # QPUのIDを抜き出す
         shr(r0, r0, 2)
         band(reg_qpu_num, r0, 0b1111)
     else:
@@ -71,14 +76,14 @@ def kernel(asm, num_qpus):
 
     # TMU用 Strideアドレス生成
     # stride幅 = 1要素のバイト幅(今回はfloat32なので4バイト) * 1度に何個ずつアクセスするか
-    # float32を16個ずつ読み書きする場合，アドレスの移動幅は64byte
+    # float32を2^4=16個ずつ読み書きする場合，アドレスの移動幅は64byte = 1つのQPUが1度に処理するバイト数
     shl(reg_In_stride, reg_In_stride, 4)
     shl(reg_Out_stride, reg_Out_stride, 4)
 
     ##################################
     # マルチコア動作のためのアドレス計算
     ##################################
-    # 1ブロックのサイズ = 1回のIOのバイト幅(64byte) * width * 1qpuが担当するheight
+    # 1ブロックのサイズ = 1回のIOのバイト幅 (64byte = 4byte x 16) * width (画像の横幅を16で割った値) * 1qpuが担当するheight (画像の縦幅を8で割った値)
     umul24(r0, reg_In_stride, reg_W)
     umul24(r0, r0, reg_H)
 
@@ -110,12 +115,14 @@ def kernel(asm, num_qpus):
             add(reg_In_cur, reg_In_cur, reg_In_stride)
             add(reg_Out_cur, reg_Out_cur, reg_Out_stride)
 
+            # reg_loop_wが0になったらループを抜ける
             sub(reg_loop_w, reg_loop_w, 1, cond="pushz")
             lw.b(cond="anyna")
             nop()  # delay slot
             nop()  # delay slot
             nop()  # delay slot
 
+        # reg_loop_hが0になったらループを抜ける
         sub(reg_loop_h, reg_loop_h, 1, cond="pushz")
         lh.b(cond="anyna")
         nop()  # delay slot
@@ -140,6 +147,7 @@ def main():
     H = 360
     W = 320
 
+    # LLL.pngを読み込んでグレースケール (Luminance) に変換
     pil_img = Image.open("./LLL.png").convert("L")
 
     with Driver() as drv:
@@ -147,17 +155,21 @@ def main():
         inp = drv.alloc((H, W), dtype="float32")
         out = drv.alloc((H, W), dtype="float32")
 
+        # strides: H,Wが1つインクリメントされたらポインタがそれぞれ何バイト移動するか
+        # RowMajorだから横は隣り合っていて，Float32なので4バイト．縦は横一列分離れている．
+        print("Data Strides: ", inp.strides)  # -> (1280, 4)
+
         inp[:] = np.asarray(pil_img)
         out[:] = 0
 
         # uniform setting
         unif = drv.alloc(6, dtype="uint32")
         unif[0] = inp.addresses()[0, 0]
-        unif[1] = inp.strides[1]  # Wが1つインクリメントされたらポインタが何バイト移動するか(横1要素のサイズ)
+        unif[1] = inp.strides[1]  # Wが1つインクリメントされたらポインタが何バイト移動するか (横1要素のサイズ)
         unif[2] = out.addresses()[0, 0]
         unif[3] = out.strides[1]
-        unif[4] = H / num_qpus
-        unif[5] = W / 16
+        unif[4] = H / num_qpus  # 1つのQPUが担当する縦幅
+        unif[5] = W / 16  # 1つのQPUが横幅を処理する回数．16個同時処理だから横幅を16で割った値．
 
         code = drv.program(kernel, num_qpus=num_qpus)
 
