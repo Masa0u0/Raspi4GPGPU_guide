@@ -25,7 +25,7 @@ def output_test(asm):
     nop(sig=ldunifrf(r1))
 
     eidx(r0)  # r0 = [0 ... 15]
-    nop()
+    nop()  # rotate命令の直前に回転するアキュムレータ (r0) に値を書き込んではいけない
     rotate(r2, r0, 2)  # 2つ右シフト
 
     # element_number
