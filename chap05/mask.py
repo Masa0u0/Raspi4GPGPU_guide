@@ -33,11 +33,11 @@ def output_test(asm):
     sub(null, r2, 5, cond="pushz")  # Zフラグセット
     mov(r0, 7, cond="ifa")  # subでゼロだった要素位置(0から数えて5番)に7を格納
 
-    nop()
-    rotate(broadcast, r0, -5)
+    # nop()
+    # rotate(broadcast, r0, -5)
     # r5=[7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7]
 
-    mov(r0, r5)
+    # mov(r0, r5)
 
     # element_number
     eidx(r2)  # r2 = [0 ... 15]
