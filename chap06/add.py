@@ -1,8 +1,6 @@
-# coding:utf-8
+import time
 from time import clock_gettime, CLOCK_MONOTONIC
 import numpy as np
-from PIL import Image, ImageFilter
-import time
 from videocore6.assembler import qpu
 from videocore6.driver import Driver
 
@@ -153,7 +151,6 @@ def main():
         num_qpus = 1
     else:
         num_qpus = 8
-    # C画像サイズ
 
     simd_width = 16
 
@@ -171,7 +168,7 @@ def main():
         C = drv.alloc((N, M), dtype="float32")
         A[:] = np.random.rand(N, M) * 0.1
         B[:] = np.random.rand(N, M) * 0.1
-        C[:] = 0
+        C[:] = 0.0
 
         # uniform setting
         unif = drv.alloc(16, dtype="uint32")
@@ -184,22 +181,24 @@ def main():
         unif[6] = loop_num_lth
         unif[7] = edge_mod_lth
         code = drv.program(kernel, num_qpus=num_qpus)
+
         # Run the program
-        gpu_time = 0
-        for i in range(10):
+        cpu_time = 0.0
+        for _ in range(10):
+            start = time.time()
+            C_ref = A + B
+            end = time.time()
+            cpu_time += (end - start) * 1000.0
+
+        gpu_time = 0.0
+        for _ in range(10):
             start = time.time()
             drv.execute(code, unif.addresses()[0], thread=num_qpus)
             end = time.time()
             gpu_time += (end - start) * 1000.0
 
-        cpu_time = 0
-        for i in range(10):
-            start = time.time()
-            C_ref = A + B
-            end = time.time()
-            cpu_time += (end - start) * 1000.0
-        print("cpu time:{}msec".format(cpu_time / 10))
-        print("gpu time:{}msec".format(gpu_time / 10))
+        print("cpu time: {}msec".format(cpu_time / 10))
+        print("gpu time: {}msec".format(gpu_time / 10))
         print(C, C_ref)
 
         print("minimum absolute error: {:.4e}".format(float(np.min(np.abs(C_ref - C)))))
