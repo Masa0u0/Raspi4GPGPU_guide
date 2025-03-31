@@ -1,8 +1,3 @@
-#####################################################################
-#
-#####################################################################
-import numpy as np
-
 from videocore6.assembler import qpu
 from videocore6.driver import Driver
 

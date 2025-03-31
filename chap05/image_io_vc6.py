@@ -5,7 +5,7 @@
 # coding:utf-8
 from time import clock_gettime, CLOCK_MONOTONIC
 import numpy as np
-from PIL import Image, ImageFilter
+from PIL import Image
 
 from videocore6.assembler import qpu
 from videocore6.driver import Driver
