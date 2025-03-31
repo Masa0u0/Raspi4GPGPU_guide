@@ -20,24 +20,23 @@ def exit_qpu():
 
 @qpu
 def output_test(asm):
-    ### ここにカーネルプログラムを書く ###
-
     # uniformから値を取り出す
-    # uniformの読み取り位置はインクリメントされる(pop的動作)
-    nop(sig=ldunifrf(r1))
+    nop(sig=ldunifrf(r1))  # r1: 出力ベクトルの先頭アドレス x 16
 
+    # r0をゼロ初期化
     mov(r0, 0)
 
-    # element_number
+    # r0の1要素のみ変更
     eidx(r2)  # r0 = [0 ... 15]
     sub(null, r2, 5, cond="pushz")  # Zフラグセット
     mov(r0, 7, cond="ifa")  # subでゼロだった要素位置(0から数えて5番)に7を格納
 
-    # element_number
+    # 出力ベクトルのアドレス配列を作成
     eidx(r2)  # r2 = [0 ... 15]
     shl(r2, r2, 2)  # 各数値を4倍
     add(r1, r1, r2)  # result[] のアドレスから ストライド=4バイトのアドレスベクトルを生成
 
+    # 書き出し
     mov(tmud, r0)  # 書き出すデータ
     mov(tmua, r1)  # 書き出し先アドレスベクトル
     tmuwt()
