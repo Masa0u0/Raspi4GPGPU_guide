@@ -1,6 +1,8 @@
 import time
 from time import clock_gettime, CLOCK_MONOTONIC
 import numpy as np
+from numpy.typing import NDArray
+
 from videocore6.assembler import qpu
 from videocore6.driver import Driver
 
@@ -144,69 +146,82 @@ def kernel(asm, num_qpus):
     nop()
 
 
-def main():
-    N = 1024
-    M = 1024
+def add(A: NDArray, B: NDArray) -> NDArray:  # FIXME: 正方行列以外にも対応
+    SIMD_WIDTH = 16
+
+    assert A.shape[1] == B.shape[0]
+
+    N = A.shape[0]
+    M = B.shape[1]
+
     if N * M <= 128:
         num_qpus = 1
     else:
         num_qpus = 8
 
-    simd_width = 16
-
     qpu_mod = (N * M) % num_qpus
     proc_size = int((N * M) / num_qpus)
     proc_size_lth = qpu_mod + proc_size
-    loop_num_lth = int(proc_size_lth / simd_width)
-    loop_num = int(proc_size / simd_width)
-    edge_mod_lth = simd_width - proc_size_lth % simd_width
-    edge_mod = simd_width - proc_size % simd_width
+    loop_num_lth = int(proc_size_lth / SIMD_WIDTH)
+    loop_num = int(proc_size / SIMD_WIDTH)
+    edge_mod_lth = SIMD_WIDTH - proc_size_lth % SIMD_WIDTH
+    edge_mod = SIMD_WIDTH - proc_size % SIMD_WIDTH
 
-    # ドライバーの初期化やメモリ確保が遅いから，使う分は先に用意しておくことが大事．
     with Driver() as drv:
         # params setting
-        A = drv.alloc((N, M), dtype="float32")
-        B = drv.alloc((N, M), dtype="float32")
-        C = drv.alloc((N, M), dtype="float32")
-        A[:] = np.random.rand(N, M) * 0.1
-        B[:] = np.random.rand(N, M) * 0.1
-        C[:] = 0.0
+        A_ = drv.alloc((N, M), dtype="float32")
+        B_ = drv.alloc((N, M), dtype="float32")
+        C_ = drv.alloc((N, M), dtype="float32")
+        A_[:] = A
+        B_[:] = A
+        C_[:] = 0.0
 
         # uniform setting
         unif = drv.alloc(16, dtype="uint32")
-        unif[0] = A.address
-        unif[1] = B.address
-        unif[2] = C.address
+        unif[0] = A_.address
+        unif[1] = B_.address
+        unif[2] = C_.address
         unif[3] = proc_size
         unif[4] = loop_num
         unif[5] = edge_mod
         unif[6] = loop_num_lth
         unif[7] = edge_mod_lth
         code = drv.program(kernel, num_qpus=num_qpus)
+        drv.execute(code, unif.addresses()[0], thread=num_qpus)
 
-        # Run the program
-        cpu_time = 0.0
-        for _ in range(10):
-            start = time.time()
-            C_ref = A + B
-            end = time.time()
-            cpu_time += (end - start) * 1000.0
+        return np.array(C_)
 
-        gpu_time = 0.0
-        for _ in range(10):
-            start = time.time()
-            drv.execute(code, unif.addresses()[0], thread=num_qpus)
-            end = time.time()
-            gpu_time += (end - start) * 1000.0
 
-        print("cpu time: {}msec".format(cpu_time / 10))
-        print("gpu time: {}msec".format(gpu_time / 10))
-        print(C, C_ref)
+def main():
+    N = 1024
+    M = 1024
 
-        print("minimum absolute error: {:.4e}".format(float(np.min(np.abs(C_ref - C)))))
-        print("maximum absolute error: {:.4e}".format(float(np.max(np.abs(C_ref - C)))))
-        print("minimum relative error: {:.4e}".format(float(np.min(np.abs((C_ref - C) / C_ref)))))
-        print("maximum relative error: {:.4e}".format(float(np.max(np.abs((C_ref - C) / C_ref)))))
+    A = np.random.rand(N, M) * 0.1
+    B = np.random.rand(N, M) * 0.1
+
+    # Run the program
+    cpu_time = 0.0
+    for _ in range(10):
+        start = time.time()
+        C_ref = A + B
+        end = time.time()
+        cpu_time += (end - start) * 1000.0
+
+    gpu_time = 0.0
+    for _ in range(10):
+        start = time.time()
+        C = add(A, B)
+        end = time.time()
+        gpu_time += (end - start) * 1000.0
+
+    print("cpu time: {}msec".format(cpu_time / 10))
+    print("gpu time: {}msec".format(gpu_time / 10))
+    print(C, C_ref)
+
+    print("minimum absolute error: {:.4e}".format(float(np.min(np.abs(C_ref - C)))))
+    print("maximum absolute error: {:.4e}".format(float(np.max(np.abs(C_ref - C)))))
+    print("minimum relative error: {:.4e}".format(float(np.min(np.abs((C_ref - C) / C_ref)))))
+    print("maximum relative error: {:.4e}".format(float(np.max(np.abs((C_ref - C) / C_ref)))))
 
 
 if __name__ == "__main__":
