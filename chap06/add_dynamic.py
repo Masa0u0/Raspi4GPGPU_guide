@@ -1,5 +1,6 @@
 import time
 from time import clock_gettime, CLOCK_MONOTONIC
+from argparse import ArgumentParser
 import numpy as np
 from numpy.typing import NDArray
 
@@ -193,15 +194,15 @@ def add(A: NDArray, B: NDArray) -> NDArray:
 
     assert A.shape == B.shape
 
-    N, M = A.shape
+    n, m = A.shape
 
-    if N * M <= 128:
+    if n * m <= 128:
         num_qpus = 1
     else:
         num_qpus = 8
 
-    qpu_mod = (N * M) % num_qpus  # 要素数をQPUで等分したときの余り -> QPU7が処理
-    proc_size = int((N * M) / num_qpus)  # QPU0~6それぞれが計算する要素数
+    qpu_mod = (n * m) % num_qpus  # 要素数をQPUで等分したときの余り -> QPU7が処理
+    proc_size = int((n * m) / num_qpus)  # QPU0~6それぞれが計算する要素数
     proc_size_lth = qpu_mod + proc_size  # QPU7が計算する要素数
     loop_num = int(proc_size / SIMD_WIDTH)  # QPU0~6のループ回数 (最後のループを除く)
     loop_num_lth = int(proc_size_lth / SIMD_WIDTH)  # QPU7のループ回数 (最後のループを除く)
@@ -210,9 +211,9 @@ def add(A: NDArray, B: NDArray) -> NDArray:
 
     with Driver() as drv:
         # params setting
-        A_ = drv.alloc((N, M), dtype="float32")
-        B_ = drv.alloc((N, M), dtype="float32")
-        C_ = drv.alloc((N, M), dtype="float32")
+        A_ = drv.alloc((n, m), dtype="float32")
+        B_ = drv.alloc((n, m), dtype="float32")
+        C_ = drv.alloc((n, m), dtype="float32")
         A_[:] = A
         B_[:] = B
 
@@ -233,29 +234,37 @@ def add(A: NDArray, B: NDArray) -> NDArray:
 
 
 def main() -> None:
-    N = 1024
-    M = 1024
+    parser = ArgumentParser()
+    parser.add_argument("--rows", help="The number of rows", type=int, default=1024)
+    parser.add_argument("--cols", help="The number of columns", type=int, default=1024)
+    parser.add_argument("--iter", help="The number of iterations", type=int, default=10)
+    args = parser.parse_args()
+    n = args.rows
+    m = args.cols
+    iter = args.iter
 
-    A = np.random.rand(N, M) * 0.1
-    B = np.random.rand(N, M) * 0.1
+    A = np.random.rand(n, m) * 0.1
+    B = np.random.rand(n, m) * 0.1
 
     # Run the program
     cpu_time = 0.0
-    for _ in range(10):
+    for i in range(iter):
+        print(f"CPU Iteration {i + 1}")
         start = time.time()
         C_ref = A + B
         end = time.time()
         cpu_time += (end - start) * 1000.0
 
     gpu_time = 0.0
-    for _ in range(10):
+    for i in range(iter):
+        print(f"GPU Iteration {i + 1}")
         start = time.time()
         C = add(A, B)
         end = time.time()
         gpu_time += (end - start) * 1000.0
 
-    print("cpu time: {}msec".format(cpu_time / 10))
-    print("gpu time: {}msec".format(gpu_time / 10))
+    print("cpu time: {} ms".format(cpu_time / 10))
+    print("gpu time: {} ms".format(gpu_time / 10))
     print(C, C_ref)
 
     print("minimum absolute error: {:.4e}".format(float(np.min(np.abs(C_ref - C)))))
