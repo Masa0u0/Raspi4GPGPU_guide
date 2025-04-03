@@ -247,24 +247,26 @@ def main() -> None:
     B = np.random.rand(n, m) * 0.1
 
     # Run the program
-    cpu_time = 0.0
+    cpu_time_sum = 0.0  # [ms]
     for i in range(iter):
         print(f"CPU Iteration {i + 1}")
-        start = time.time()
+        t_start = time.time()
         C_ref = A + B
-        end = time.time()
-        cpu_time += (end - start) * 1000.0
+        t_end = time.time()
+        cpu_time_sum += (t_end - t_start) * 1000
+    cpu_time_avg = cpu_time_sum / iter
 
-    gpu_time = 0.0
+    gpu_time_sum = 0.0  # [ms]
     for i in range(iter):
         print(f"GPU Iteration {i + 1}")
-        start = time.time()
+        t_start = time.time()
         C = add(A, B)
-        end = time.time()
-        gpu_time += (end - start) * 1000.0
+        t_end = time.time()
+        gpu_time_sum += (t_end - t_start) * 1000
+    gpu_time_avg = gpu_time_sum / iter
 
-    print("cpu time: {} ms".format(cpu_time / 10))
-    print("gpu time: {} ms".format(gpu_time / 10))
+    print("cpu time: {} ms".format(cpu_time_avg))
+    print("gpu time: {} ms".format(gpu_time_avg))
     print(C, C_ref)
 
     print("minimum absolute error: {:.4e}".format(float(np.min(np.abs(C_ref - C)))))
