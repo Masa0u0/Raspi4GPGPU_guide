@@ -188,13 +188,12 @@ def kernel(asm, num_qpus: int) -> None:
     exit_qpu()
 
 
-def add(A: NDArray, B: NDArray) -> NDArray:  # FIXME: 正方行列以外にも対応
+def add(A: NDArray, B: NDArray) -> NDArray:
     SIMD_WIDTH = 16
 
-    assert A.shape[1] == B.shape[0]
+    assert A.shape == B.shape
 
-    N = A.shape[0]
-    M = B.shape[1]
+    N, M = A.shape
 
     if N * M <= 128:
         num_qpus = 1
