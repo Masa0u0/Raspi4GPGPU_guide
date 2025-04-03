@@ -153,124 +153,124 @@ def kernel(asm, num_qpus: int) -> None:
         rotate(broadcast, r2, -A_STR)  # r5 = A_STR (nop)
 
         # if (iidx + 1) * 16 > HBLOCK: 現在のループで処理するAのブロックの終了位置のY座標が担当ブロックをはみ出る場合
-        # add(r0, r0, r1)  # r0 = HBLOCK - 16
+        add(r0, r0, r1)  # r0 = HBLOCK - 16
         # eidx(a_cur)  # TODO: 上と同じだから不要では？
         # rotate(broadcast, r2, -A_STR)  # TODO: 上と同じだから不要では？
         # endif (iidx + 1) * 16 >= HBLOCK
 
         L.fraction_i_end
 
-        umul24(a_cur, a_cur, r5)
-        umul24(r0, r5, r0)
-        add(a_cur, a_cur, r0)
-        rotate(broadcast, r2, -A_ADDR)
-        add(a_cur, a_cur, r5)
-        mov(jidx, 0)
-        with loop as jloop:
-            # set b_cur
-            # 1 : 32 x 4(float) x jidx
-            umul24(r0, ldi128, jidx)
+        # umul24(a_cur, a_cur, r5)
+        # umul24(r0, r5, r0)
+        # add(a_cur, a_cur, r0)
+        # rotate(broadcast, r2, -A_ADDR)
+        # add(a_cur, a_cur, r5)
+        # mov(jidx, 0)
+        # with loop as jloop:
+        #     # set b_cur
+        #     # 1 : 32 x 4(float) x jidx
+        #     umul24(r0, ldi128, jidx)
 
-            # if WBLOCK - j * 32 * 4(bytes) < 0:
-            #     r0 - (128 + (WBLOCK - j * 128)
-            add(r3, r0, ldi128)
-            rotate(broadcast, r2, -WBLOCK)
-            sub(r3, r5, r3, cond="pushn")
-            b(R.fraction_j_end, cond="anyna")
-            mov(kidx, 0)
-            eidx(b_cur)
-            mov(rf49, 0)
+        #     # if WBLOCK - j * 32 * 4(bytes) < 0:
+        #     #     r0 - (128 + (WBLOCK - j * 128)
+        #     add(r3, r0, ldi128)
+        #     rotate(broadcast, r2, -WBLOCK)
+        #     sub(r3, r5, r3, cond="pushn")
+        #     b(R.fraction_j_end, cond="anyna")
+        #     mov(kidx, 0)
+        #     eidx(b_cur)
+        #     mov(rf49, 0)
 
-            add(r0, r0, r3)
-            mov(rf49, r3)
-            mov(kidx, 0)
-            eidx(b_cur)
+        #     add(r0, r0, r3)
+        #     mov(rf49, r3)
+        #     mov(kidx, 0)
+        #     eidx(b_cur)
 
-            L.fraction_j_end
+        #     L.fraction_j_end
 
-            # 2 : eidx x 4 + B_ADDR
-            shl(b_cur, b_cur, 2)
-            rotate(broadcast, r2, -B_ADDR)
-            add(b_cur, b_cur, r5)
+        #     # 2 : eidx x 4 + B_ADDR
+        #     shl(b_cur, b_cur, 2)
+        #     rotate(broadcast, r2, -B_ADDR)
+        #     add(b_cur, b_cur, r5)
 
-            # 1 + 2
-            add(b_cur, b_cur, r0)
+        #     # 1 + 2
+        #     add(b_cur, b_cur, r0)
 
-            with loop as kloop:
-                mov(tmua, a_cur, sig=thrsw)
-                add(a_cur, a_cur, 4)  # nop()
-                add(kidx, kidx, 1)  # nop()
-                nop(sig=ldtmu(r4))
-                for lj in range(2):
-                    stp = lj * 16
-                    mov(tmua, b_cur, sig=thrsw)
-                    if lj == 0:
-                        add(b_cur, b_cur, simd_stp)  # nop()
-                    else:
-                        nop()
-                    nop()
-                    nop(sig=ldtmu(r3))
-                    rotate(broadcast, r4, 0)
-                    fmul(r0, r5, r3)
-                    for li in range(15):
-                        rotate(broadcast, r4, -(li + 1))
-                        fadd(rf[stp + li], rf[stp + li], r0).fmul(r0, r5, r3)
-                    fadd(rf[stp + 15], rf[stp + 15], r0)
-                rotate(broadcast, r2, -LOOP_K)
-                sub(null, r5, kidx, cond="pushz")
-                kloop.b(cond="anyna")
-                sub(b_cur, b_cur, simd_stp)  # nop()
-                rotate(broadcast, r2, -B_STR)  # nop()
-                add(b_cur, b_cur, r5)  # nop()
+        #     with loop as kloop:
+        #         mov(tmua, a_cur, sig=thrsw)
+        #         add(a_cur, a_cur, 4)  # nop()
+        #         add(kidx, kidx, 1)  # nop()
+        #         nop(sig=ldtmu(r4))
+        #         for lj in range(2):
+        #             stp = lj * 16
+        #             mov(tmua, b_cur, sig=thrsw)
+        #             if lj == 0:
+        #                 add(b_cur, b_cur, simd_stp)  # nop()
+        #             else:
+        #                 nop()
+        #             nop()
+        #             nop(sig=ldtmu(r3))
+        #             rotate(broadcast, r4, 0)
+        #             fmul(r0, r5, r3)
+        #             for li in range(15):
+        #                 rotate(broadcast, r4, -(li + 1))
+        #                 fadd(rf[stp + li], rf[stp + li], r0).fmul(r0, r5, r3)
+        #             fadd(rf[stp + 15], rf[stp + 15], r0)
+        #         rotate(broadcast, r2, -LOOP_K)
+        #         sub(null, r5, kidx, cond="pushz")
+        #         kloop.b(cond="anyna")
+        #         sub(b_cur, b_cur, simd_stp)  # nop()
+        #         rotate(broadcast, r2, -B_STR)  # nop()
+        #         add(b_cur, b_cur, r5)  # nop()
 
-            umul24(r0, ldi16, iidx)
-            rotate(broadcast, r2, -B_STR)
-            umul24(r0, r5, r0)
+        #     umul24(r0, ldi16, iidx)
+        #     rotate(broadcast, r2, -B_STR)
+        #     umul24(r0, r5, r0)
 
-            eidx(c_cur)
-            umul24(c_cur, c_cur, 4)
+        #     eidx(c_cur)
+        #     umul24(c_cur, c_cur, 4)
 
-            umul24(r1, r1, r5)  # 端数処理
+        #     umul24(r1, r1, r5)  # 端数処理
 
-            add(c_cur, c_cur, r0)
+        #     add(c_cur, c_cur, r0)
 
-            # 32 x 4(float) x jidx
-            umul24(r0, ldi128, jidx)
-            add(r0, r0, rf49)
-            rotate(broadcast, r2, -C_ADDR)
-            add(c_cur, c_cur, r5)
-            add(c_cur, c_cur, r0)
-            add(c_cur, c_cur, r1)  # 端数処理
+        #     # 32 x 4(float) x jidx
+        #     umul24(r0, ldi128, jidx)
+        #     add(r0, r0, rf49)
+        #     rotate(broadcast, r2, -C_ADDR)
+        #     add(c_cur, c_cur, r5)
+        #     add(c_cur, c_cur, r0)
+        #     add(c_cur, c_cur, r1)  # 端数処理
 
-            rotate(broadcast, r2, -B_STR)
-            sub(r0, r5, simd_stp)
-            for li in range(16):
-                mov(tmud, rf[li])
-                mov(tmua, c_cur)
-                add(c_cur, c_cur, simd_stp)
-                mov(rf[li], 0.0)
-                tmuwt()
-                mov(tmud, rf[li + 16])
-                mov(tmua, c_cur)
-                add(c_cur, c_cur, r0)
-                mov(rf[li + 16], 0.0)
-                tmuwt()
+        #     rotate(broadcast, r2, -B_STR)
+        #     sub(r0, r5, simd_stp)
+        #     for li in range(16):
+        #         mov(tmud, rf[li])
+        #         mov(tmua, c_cur)
+        #         add(c_cur, c_cur, simd_stp)
+        #         mov(rf[li], 0.0)
+        #         tmuwt()
+        #         mov(tmud, rf[li + 16])
+        #         mov(tmua, c_cur)
+        #         add(c_cur, c_cur, r0)
+        #         mov(rf[li + 16], 0.0)
+        #         tmuwt()
 
-            rotate(broadcast, r2, -LOOP_J)
-            add(jidx, jidx, 1)
-            sub(null, r5, jidx, cond="pushz")
-            jloop.b(cond="anyna")
-            rotate(broadcast, r2, -A_STR)  # nop()
-            sub(a_cur, a_cur, r5)  # nop()
-            nop()
+        #     rotate(broadcast, r2, -LOOP_J)
+        #     add(jidx, jidx, 1)
+        #     sub(null, r5, jidx, cond="pushz")
+        #     jloop.b(cond="anyna")
+        #     rotate(broadcast, r2, -A_STR)  # nop()
+        #     sub(a_cur, a_cur, r5)  # nop()
+        #     nop()
 
-        add(iidx, iidx, 1)
-        rotate(broadcast, r2, -LOOP_I)
-        sub(null, r5, iidx, cond="pushz")
-        iloop.b(cond="anyna")
-        nop()
-        nop()
-        nop()
+        # add(iidx, iidx, 1)
+        # rotate(broadcast, r2, -LOOP_I)
+        # sub(null, r5, iidx, cond="pushz")
+        # iloop.b(cond="anyna")
+        # nop()
+        # nop()
+        # nop()
 
     barrierid(syncb, sig=thrsw)
     nop()
