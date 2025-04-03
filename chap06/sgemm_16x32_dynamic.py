@@ -13,22 +13,32 @@ def getsec() -> float:
     return clock_gettime(CLOCK_MONOTONIC)
 
 
+def get_thid() -> None:
+    # QPUのIDとスレッドのIDを取り出してr0に格納する．
+    # 8つのスレッドが並列で動作しており，スレッドによって異なる結果が返る．
+    tidx(r0)
+
+    # QPUのIDを抜き出す
+    shr(r0, r0, 2)
+    band(r0, r0, 0b1111)
+
+
 @qpu
 def kernel(asm, num_qpus: int) -> None:
-    A_ADDR = 0
-    A_STR = 1
-    B_ADDR = 2
-    B_STR = 3
-    C_ADDR = 4
-    HBLOCK = 5
-    WBLOCK = 6
-    LOOP_I = 7
-    LOOP_J = 8
-    LOOP_K = 9
-    FRAC_W = 10
-    FRAC_H = 11
+    A_ADDR = 0  # Aの先頭アドレス
+    A_STR = 1  # q * 4
+    B_ADDR = 2  # Bの先頭アドレス
+    B_STR = 3  # r * 4
+    C_ADDR = 4  # Cの先頭アドレス
+    HBLOCK = 5  # 1スレッドが処理するブロックの高さ
+    WBLOCK = 6  # 1スレッドが処理するブロックの幅
+    LOOP_I = 7  # 列方向のループ回数
+    LOOP_J = 8  # 行方向のループ回数
+    LOOP_K = 9  # 畳み込みのループ回数
+    FRAC_H = 10  # 行方向の端数
+    FRAC_W = 11  # 列方向の端数
 
-    eidx(r0).mov(r2, 0)
+    eidx(r0).mov(r2, 0)  # r0 = [0, 1, ..., 15], r2 = [0] * 16
     for idx in [
         A_ADDR,
         A_STR,
@@ -40,67 +50,70 @@ def kernel(asm, num_qpus: int) -> None:
         LOOP_I,
         LOOP_J,
         LOOP_K,
-        FRAC_W,
         FRAC_H,
+        FRAC_W,
     ]:
         nop(sig=ldunifrf(r5))
         sub(null, r0, idx, cond="pushz")
         mov(r2, r5, cond="ifa")
+        # r2 = [A_ADDR, A_STR, B_ADDR, B_STR, C_ADDR, HBLOCK, WBLOCK, LOOP_I, LOOP_J, LOOP_K, FRAC_H, FRAC_W, 0, 0, 0, 0]
 
     if num_qpus == 1:
-        mov(r0, 0)
+        mov(r0, 0)  # r0 = [0] * 16
     elif num_qpus == 8:
-        tidx(r0)
-        shr(r0, r0, 2)
-        band(r0, r0, 0b1111)
+        get_thid()  # r0 = [thid] * 16
     else:
         raise Exception("num_qpus must be 1 or 8")
 
+    # 全ての汎用レジスタをゼロ初期化
     for i in range(64):
         mov(rf[i], 0.0)
-    # =======numqpu=8 to  thx=4========
-    #                   thy=2
-    # if(thx-4>=0){thx-=4}
-    # B set
 
-    eidx(r4)
-    sub(r1, r0, 4, cond="pushn")
-    mov(r1, r0, cond="ifa")
-    rotate(broadcast, r2, -WBLOCK)
-    umul24(r3, r5, r1)
+    eidx(r4)  # r4 = [0, 1, ..., 15]
+
+    # B set
+    # 横に4分割したうちの1つを使う
+    sub(r1, r0, 4, cond="pushn")  # r1 = [thid - 4] * 16
+    mov(r1, r0, cond="ifa")  # r1 = [thid] * 16 or [thid - 4] * 16: 担当するブロックの列番号
+    rotate(broadcast, r2, -WBLOCK)  # r5 = [WBLOCK] * 16
+    umul24(r3, r5, r1)  # r3 = [thid * WBLOCK] * 16 or [(thid - 4) * WBLOCK] * 16: 担当するブロックの開始位置のX座標
 
     # 端数処理
-    rotate(broadcast, r2, -FRAC_W)
+    # スレッドIDが3または7，つまり右端のブロックを担当しているならば，はみ出た分だけブロックの開始位置を左にずらす
+    rotate(broadcast, r2, -FRAC_W)  # r5 = [FRAC_W] * 16
     sub(null, r1, 3, cond="pushz")
     sub(r3, r3, r5, cond="ifa")
-    mov(r1, r3)
 
+    mov(r1, r3)  # r1 = [thid * WBLOCK] * 16 or [(thid - 4) * WBLOCK] * 16: 担当するブロックの開始位置のX座標
+
+    # Bの担当ブロックの開始位置に移動
     sub(null, r4, B_ADDR, cond="pushz")
     add(r2, r2, r1, cond="ifa")
 
-    # numqpu%4
     # A set
+    # 縦に2分割したうちの1つを使う
+    shr(r3, r0, 2)  # r3: QPU0~3 -> 0, QPU4~7 -> 1
+    rotate(broadcast, r2, -HBLOCK)  # r5 = [HBLOCK] * 16
+    mov(r0, r5)  # r0 = [HBLOCK] * 16
+    rotate(broadcast, r2, -FRAC_H)  # r5 = [FRAC_H] * 16
+    sub(r0, r0, r5)  # r0 = [HBLOCK - FRAC_H] * 16
 
-    shr(r3, r0, 2)
-    rotate(broadcast, r2, -HBLOCK)
-    mov(r0, r5)
-    rotate(broadcast, r2, -FRAC_H)
-    sub(r0, r0, r5)
+    umul24(r3, r0, r3)  # r3: QPU0~3 -> 0, QPU4~7 -> HBLOCK - FRAC_H: 担当するブロックの開始位置のY座標
+    rotate(broadcast, r2, -B_STR)  # r5 = [B_STR] * 16
+    umul24(r0, r3, r5)  # r0: Cの担当するブロックの開始位置と同じ行の左端までのオフセット
 
-    umul24(r3, r0, r3)
-    rotate(broadcast, r2, -B_STR)  # for C
-    umul24(r0, r3, r5)
-
-    rotate(broadcast, r2, -A_STR)  # for A
-    umul24(r3, r5, r3)
+    # Aの担当ブロックの開始位置に移動
+    rotate(broadcast, r2, -A_STR)  # r5 = [A_STR] * 16
+    umul24(r3, r5, r3)  # r3: Aの開始位置までのオフセット
     sub(null, r4, A_ADDR, cond="pushz")
     add(r2, r2, r3, cond="ifa")
 
-    # C set
-    add(r1, r1, r0)
+    # Cの担当ブロックの開始位置に移動
+    add(r1, r1, r0)  # r1: Cの担当するブロックの開始位置までのオフセット
     sub(null, r4, C_ADDR, cond="pushz")
     add(r2, r2, r1, cond="ifa")
 
+    # 使用する変数，定数のエイリアス
     iidx = rf50
     jidx = rf51
     kidx = rf52
@@ -113,33 +126,37 @@ def kernel(asm, num_qpus: int) -> None:
     ldi128 = rf59
     ldi16 = rf60
     mov(ldi128, 1)
-    shl(ldi128, ldi128, 7)
+    shl(ldi128, ldi128, 7)  # ldi128 = 128
     mov(ldi16, 1)
-    shl(ldi16, ldi16, 4)
-    # simd_stp = 16 x 4
+    shl(ldi16, ldi16, 4)  # ldi16 = 16
     mov(simd_stp, 1)
-    shl(simd_stp, simd_stp, 6)
-    mov(iidx, 0)
+    shl(simd_stp, simd_stp, 6)  # simd_stp = 64 = 16 * 4
+    mov(iidx, 0)  # iidx = 0
 
     with loop as iloop:
         # set a_cur
         # 16 x iidx x A_STR x eidx + A_ADDR
-        umul24(r0, ldi16, iidx)
+        umul24(r0, ldi16, iidx)  # r0 = iidx * 16
 
         # 端数処理
         # if HBLOCK - i * 16 < 0:
-        #     i - (16 + (HBLOCK - i*16))
-        add(r1, r0, ldi16)
-        rotate(broadcast, r2, -HBLOCK)
-        sub(r1, r5, r1, cond="pushn")
-        b(R.fraction_i_end, cond="anyna")
-        mov(r1, 0)  # nop
-        eidx(a_cur)  # nop
-        rotate(broadcast, r2, -A_STR)  # nop
+        #     i - (16 + (HBLOCK - i * 16))
+        add(r1, r0, ldi16)  # r1 = (iidx + 1) * 16: AのY座標を進める
+        rotate(broadcast, r2, -HBLOCK)  # r5 = HBLOCK
+        sub(r1, r5, r1, cond="pushn")  # r1 = HBLOCK - (iidx + 1) * 16
+        b(R.fraction_i_end, cond="anyna")  # r1 < 0 <=> HBLOCK < (iidx + 1) * 16 が成り立たないなら3命令後にジャンプ
 
-        add(r0, r0, r1)
-        eidx(a_cur)
-        rotate(broadcast, r2, -A_STR)
+        # 以下3行はどちらにせよ実行される
+        # nopがもったいないので競合しない命令を差し込んでいる
+        mov(r1, 0)  # r1 = 0 (nop)
+        eidx(a_cur)  # a_cur = [0, 1, ..., 15] (nop)
+        rotate(broadcast, r2, -A_STR)  # r5 = A_STR (nop)
+
+        # if (iidx + 1) * 16 > HBLOCK: 現在のループで処理するAのブロックの終了位置のY座標が担当ブロックをはみ出る場合
+        add(r0, r0, r1)  # r0 = HBLOCK - 16
+        eidx(a_cur)  # TODO: 上と同じだから不要では？
+        rotate(broadcast, r2, -A_STR)  # TODO: 上と同じだから不要では？
+        # endif (iidx + 1) * 16 >= HBLOCK
 
         L.fraction_i_end
 
@@ -269,13 +286,16 @@ def kernel(asm, num_qpus: int) -> None:
 
 
 def dot(A: NDArray, B: NDArray) -> NDArray:
-    SIMD_WIDTH = 16
+    SEG_MAT_ROWS = 16
+    SEG_MAT_COLS = 32
 
     assert A.shape[1] == B.shape[0]
 
     p = A.shape[0]
     q = A.shape[1]
     r = B.shape[1]
+
+    assert p >= SEG_MAT_ROWS and r >= SEG_MAT_COLS
 
     if p < 32 or r < 128:
         num_thx = 1
@@ -284,7 +304,6 @@ def dot(A: NDArray, B: NDArray) -> NDArray:
         num_thx = 4
         num_thy = 2
 
-    assert p >= 16 and r >= 32, "The matrix size must satisfy p <= 16 and r <= 32."
     num_qpus = num_thx * num_thy
 
     # 1スレッドが処理する範囲
@@ -292,20 +311,15 @@ def dot(A: NDArray, B: NDArray) -> NDArray:
     wblock = math.ceil(r / num_thx)
 
     # スレッド分割の端数
-    # GPUカーネル内で以下の処理を行う
-    # if thread_id.x == 3:
-    #     WBLOCK = WBLOCK - frac_w
-    # if thread_id.y == 1:
-    #     HBLOCK = HBLOCK - frac_h
-    frac_w = (wblock * num_thx - r) * 4
     frac_h = hblock * num_thy - p
+    frac_w = (wblock * num_thx - r) * 4
 
     # ループ回数
-    j_idx = math.ceil(r / (32 * num_thx))
-    i_idx = math.ceil(p / (16 * num_thy))
+    j_idx = math.ceil(r / (SEG_MAT_COLS * num_thx))
+    i_idx = math.ceil(p / (SEG_MAT_ROWS * num_thy))
     k_idx = q
 
-    wblock = int(wblock * 4)  # float = 4bytes
+    wblock *= 4  # float32 = 4bytes
 
     with Driver(data_area_size=1024 * 1024 * 1024 + 1024 * 1024 * 512) as drv:
         # メモリ確保
@@ -327,8 +341,8 @@ def dot(A: NDArray, B: NDArray) -> NDArray:
         unif[7] = i_idx
         unif[8] = j_idx
         unif[9] = k_idx
-        unif[10] = frac_w
         unif[11] = frac_h
+        unif[10] = frac_w
         code = drv.program(kernel, num_qpus=num_qpus)
         drv.execute(code, unif.addresses()[0], thread=num_qpus)
 
