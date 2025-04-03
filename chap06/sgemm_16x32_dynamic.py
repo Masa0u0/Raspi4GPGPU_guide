@@ -351,30 +351,30 @@ def main():
     B = np.random.rand(q, r) * 0.1
 
     # Run the program
-    cpu_time_sum = 0.0  # [ms]
+    cpu_time_sum = 0.0  # [s]
     for i in range(iter):
         print(f"CPU Iteration {i + 1}")
         t_start = time.time()
         C_ref = np.dot(A, B)
         t_end = time.time()
-        cpu_time_sum += (t_end - t_start) * 1000
+        cpu_time_sum += t_end - t_start
     cpu_time_avg = cpu_time_sum / iter
 
-    gpu_time_sum = 0.0  # [ms]
+    gpu_time_sum = 0.0  # [s]
     for i in range(iter):
         print(f"GPU Iteration {i + 1}")
         t_start = time.time()
         C = dot(A, B)
         t_end = time.time()
-        gpu_time_sum += (t_end - t_start) * 1000
+        gpu_time_sum += t_end - t_start
     gpu_time_avg = gpu_time_sum / iter
 
-    def gflops(time):
+    def gflops(time: float) -> float:
         return p * q * r * 2 / time * 1e-9
 
     print(np.count_nonzero(C != 1))
-    print(f"CPU time:  {cpu_time_avg:.2f} ms")
-    print(f"GPU time:  {gpu_time_avg:.2f} ms")
+    print(f"CPU time:  {cpu_time_avg * 1000:.2f} ms")
+    print(f"GPU time:  {gpu_time_avg * 1000:.2f} ms")
     print(f"CPU FLOPS: {gflops(cpu_time_avg):.2f} GFLOPS")
     print(f"GPU FLOPS: {gflops(gpu_time_avg):.2f} GFLOPS")
     print("minimum absolute error: {:.4e}".format(float(np.min(np.abs(C_ref - C)))))
