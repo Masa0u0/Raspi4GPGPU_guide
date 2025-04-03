@@ -23,6 +23,20 @@ def get_thid() -> None:
     band(r0, r0, 0b1111)
 
 
+def exit_qpu() -> None:
+    barrierid(syncb, sig=thrsw)
+    nop()
+    nop()
+    nop(sig=thrsw)
+    nop(sig=thrsw)
+    nop()
+    nop()
+    nop(sig=thrsw)
+    nop()
+    nop()
+    nop()
+
+
 @qpu
 def kernel(asm, num_qpus: int) -> None:
     A_ADDR = 0  # Aの先頭アドレス
@@ -158,6 +172,7 @@ def kernel(asm, num_qpus: int) -> None:
 
         L.fraction_i_end
 
+        # TODO: 以下のコードを理解して全行にコメントを入れる
         umul24(a_cur, a_cur, r5)
         umul24(r0, r5, r0)
         add(a_cur, a_cur, r0)
@@ -270,17 +285,8 @@ def kernel(asm, num_qpus: int) -> None:
         nop()
         nop()
 
-    barrierid(syncb, sig=thrsw)
-    nop()
-    nop()
-    nop(sig=thrsw)
-    nop(sig=thrsw)
-    nop()
-    nop()
-    nop(sig=thrsw)
-    nop()
-    nop()
-    nop()
+    # 終了処理
+    exit_qpu()
 
 
 def dot(A: NDArray, B: NDArray) -> NDArray:
