@@ -26,15 +26,15 @@ def read_add_write() -> None:
     # Aの16要素をrf5に読み出す
     # nop()2回分の時間を有効活用するために競合しない命令を差し込んでいる
     mov(tmua, r1, sig=thrsw)
-    mov(r0, 1)  # r0 = [1] * 16
-    shl(r0, r0, 6)  # r0 = [64] * 16: 1つのQPUが1ループで計算するブロックのメモリ幅 = 16 * 4[byte] = 64[byte]
+    mov(r0, 1)  # r0 = [1] * 16 (nop)
+    shl(r0, r0, 6)  # r0 = [64] * 16: 1つのQPUが1ループで計算するブロックのメモリ幅 = 16 * 4[byte] = 64[byte] (nop)
     nop(sig=ldtmu(rf5))
 
     # Bの16要素をrf6に読み出す
     # nop()2回分の時間を有効活用するために競合しない命令を差し込んでいる
     mov(tmua, r3, sig=thrsw)
-    add(r1, r1, r0)  # Aのアドレスを1ループ分進める
-    add(r3, r3, r0)  # Bのアドレスを1ループ分進める
+    add(r1, r1, r0)  # Aのアドレスを1ループ分進める (nop)
+    add(r3, r3, r0)  # Bのアドレスを1ループ分進める (nop)
     nop(sig=ldtmu(rf6))
 
     # A + Bの要素を計算してrf0に格納
@@ -63,9 +63,9 @@ def exit_qpu() -> None:
 
 @qpu
 def kernel(asm, num_qpus: int) -> None:
-    A_ADDR = 0
-    B_ADDR = 1
-    C_ADDR = 2
+    A_ADDR = 0  # Aの先頭アドレス
+    B_ADDR = 1  # Bの先頭アドレス
+    C_ADDR = 2  # Cの先頭アドレス
     PROC_SIZE = 3  # QPU0~6それぞれが計算する要素数
     LOOP_NUM = 4  # QPU0~6のループ回数 (最後のループを除く)
     EDGE_MOD = 5  # QPU0~6の最後のループの16要素のうち要素なし部分の個数
@@ -85,15 +85,16 @@ def kernel(asm, num_qpus: int) -> None:
         nop(sig=ldunifrf(r5))
         sub(null, r0, idx, cond="pushz")
         mov(r2, r5, cond="ifa")
-        # r2 = [A_ADDR, B_ADDR, C_ADDR, PROC_SIZE, LOOP_NUM, EDGE_MOD, LOOP_NUM_LTH, EDGE_MOD_LTH, 0, ..., 0]
+        # r2 = [A_ADDR, B_ADDR, C_ADDR, PROC_SIZE, LOOP_NUM, EDGE_MOD, LOOP_NUM_LTH, EDGE_MOD_LTH, 0, 0, 0, 0, 0, 0, 0, 0]
 
     if num_qpus == 1:
-        mov(r0, 0)
+        mov(r0, 0)  # r0 = [0] * 16
     elif num_qpus == 8:
         get_thid()  # r0 = [thid] * 16
     else:
         raise Exception("num_qpus must be 1 or 8")
 
+    # 全ての汎用レジスタをゼロ初期化
     for i in range(64):
         mov(rf[i], 0.0)
 
