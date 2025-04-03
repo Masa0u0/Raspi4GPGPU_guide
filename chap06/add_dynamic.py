@@ -215,7 +215,6 @@ def add(A: NDArray, B: NDArray) -> NDArray:
         C_ = drv.alloc((N, M), dtype="float32")
         A_[:] = A
         B_[:] = B
-        C_[:] = 0.0
 
         # uniform setting
         unif = drv.alloc(16, dtype="uint32")
