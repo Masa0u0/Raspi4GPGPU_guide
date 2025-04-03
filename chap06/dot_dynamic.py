@@ -166,7 +166,7 @@ def kernel(asm, num_qpus: int) -> None:
         eidx(a_cur)  # a_cur = [0, 1, ..., 15] (nop)
         rotate(broadcast, r2, -A_STR)  # r5 = A_STR (nop)
 
-        # if (iidx + 1) * 16 > HBLOCK: 現在のループで処理するAのブロックの終了位置のY座標が担当ブロックをはみ出る場合
+        # if (iidx + 1) * 16 >= HBLOCK: 現在のループで処理するAのブロックの終了位置のY座標が担当ブロックをはみ出る場合
         add(r0, r0, r1)  # r0 = HBLOCK - 16
         # endif (iidx + 1) * 16 >= HBLOCK
 
